@@ -2,8 +2,6 @@ package math_test
 
 import (
 	"testing"
-
-	"github.com/mauricelam/genny/examples/davechaney"
 )
 
 func TestNumberTypeMax(t *testing.T) {

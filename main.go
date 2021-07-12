@@ -8,12 +8,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+
 	// "path"
 	"runtime/debug"
 	"strings"
 
-	"github.com/mauricelam/genny/out"
-	"github.com/mauricelam/genny/parse"
+	"github.com/kelindar/genny/out"
+	"github.com/kelindar/genny/parse"
 )
 
 /*

@@ -1,6 +1,6 @@
-module github.com/mauricelam/genny
+module github.com/kelindar/genny
 
-go 1.12
+go 1.16
 
 require (
 	github.com/stretchr/testify v1.3.0
