@@ -39,3 +39,13 @@ var Numbers = []string{
 	"uint64",
 	"uint8",
 }
+
+// isNumber returns whether the string is a number
+func isNumber(v string) bool {
+	for _, t := range Numbers {
+		if t == v {
+			return true
+		}
+	}
+	return false
+}

@@ -46,38 +46,55 @@ var unwantedLinePrefixes = [][]byte{
 	[]byte("//go:generate $GOPATH/bin/genny "),
 }
 
-func subIntoLiteral(lit, typeTemplate, specificType string) string {
+func subIntoLiteral(prefix, lit, typeTemplate, specificType string) string {
 	// print("l >> %s ... tt >> %s", lit, typeTemplate)
 	if lit == typeTemplate {
 		return specificType
 	}
+
 	if !containsFold(lit, typeTemplate) {
 		return lit
 	}
+
 	specificLg := wordify(specificType, true)
 	specificSm := wordify(specificType, false)
+
 	var replacer string
-	if isExported(typeTemplate) {
+	switch {
+	case isExported(typeTemplate):
 		replacer = specificLg
-	} else {
+	default:
 		replacer = specificSm
 	}
+
 	// result := lit //replaceBoundary(lit, typeTemplate, specificType)
 	typeregex := regexp.MustCompile("\\b" + typeTemplate + "\\b")
 	result := typeregex.ReplaceAllString(lit, specificType)
 	result = strings.Replace(result, typeTemplate, replacer, -1)
+
 	if strings.HasPrefix(result, specificLg) && !isExported(lit) {
-		result = strings.Replace(result, specificLg, specificSm, 1)
+		result = strings.Replace(result, specificLg, replacer, 1)
 	}
-	result = replaceBoundary(result, typeTemplate, specificSm)
-	// print("RES=%s", result)
+
+	// Two special cases for number functions
+	switch {
+	case isNumber(specificType) && strings.HasSuffix(prefix, "func "):
+		result = replaceBoundary(result, typeTemplate, specificLg)
+	case isNumber(specificType) && strings.HasSuffix(prefix, "."):
+		result = replaceBoundary(result, typeTemplate, specificLg)
+	case isNumber(specificType) && strings.HasSuffix(prefix, "// "):
+		result = replaceBoundary(result, typeTemplate, specificLg)
+	default:
+		result = replaceBoundary(result, typeTemplate, specificSm)
+	}
+
 	return result
 }
 
 func subTypeIntoComment(line, typeTemplate, specificType string) string {
 	var subbed string
 	for _, w := range strings.Fields(line) {
-		subbed = subbed + subIntoLiteral(w, typeTemplate, specificType) + " "
+		subbed = subbed + subIntoLiteral("// ", w, typeTemplate, specificType) + " "
 	}
 	return subbed
 }
@@ -92,20 +109,25 @@ func subTypeIntoLine(line, typeTemplate, specificType string) string {
 	s.Init(file, src, nil, scanner.ScanComments)
 	output := ""
 	for {
-		_, tok, lit := s.Scan()
-		// print("%s -> %s", lit, tok)
+		position, tok, lit := s.Scan()
 		if tok == token.EOF {
 			break
-		} else if tok == token.COMMENT {
+		}
+		// print("%s -> %s", lit, tok)
+
+		switch {
+		case tok == token.COMMENT:
 			subbed := subTypeIntoComment(lit, typeTemplate, specificType)
 			output = output + subbed + " "
-		} else if tok.IsLiteral() {
-			// print("LITERAL %s ---> %s", line, lit)
-			subbed := subIntoLiteral(lit, typeTemplate, specificType)
+		case tok.IsLiteral():
+			//println("LITERAL", line, lit, typeTemplate, specificType)
+			prefix := line[:position-1]
+			subbed := subIntoLiteral(prefix, lit, typeTemplate, specificType)
 			output = output + subbed + " "
-		} else {
+		default:
 			output = output + tok.String() + " "
 		}
+
 	}
 	return output
 }
@@ -380,11 +402,9 @@ func wordify(s string, exported bool) string {
 		s = strings.Replace(s, ".", "", -1)
 	}
 	if !exported {
-		println("wordify", s, exported)
 		return strings.ToLower(string(s[0])) + s[1:]
 	}
 
-	println("wordify", s, exported)
 	return strings.ToUpper(string(s[0])) + s[1:]
 }
 
